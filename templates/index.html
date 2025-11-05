@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI & Tech News Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card-bg: #ffffff;
+      --primary: #0057ff;
+      --gradient: linear-gradient(135deg, #0057ff, #00c6ff);
+      --text: #1e293b;
+      --muted: #64748b;
+      --shadow: rgba(0, 0, 0, 0.1);
+    }
+
+    body.dark {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --shadow: rgba(255, 255, 255, 0.05);
+      --gradient: linear-gradient(135deg, #2563eb, #0ea5e9);
+    }
+
+    * {
+      box-sizing: border-box;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* Header */
+    header {
+      background: var(--gradient);
+      color: white;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 10px var(--shadow);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header h1 span {
+      font-size: 2rem;
+    }
+
+    /* Filter + Toggle container */
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .filter-container select {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      outline: none;
+      background: white;
+      color: var(--primary);
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease-in-out;
+    }
+
+    body.dark .filter-container select {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    .filter-container select:hover {
+      background: #e0e7ff;
+    }
+
+    body.dark .filter-container select:hover {
+      background: #334155;
+    }
+
+    /* Dark mode toggle */
+    .toggle-btn {
+      background: transparent;
+      border-radius:50%;
+      border-style: hidden;
+      width: 38px;
+      height: 38px;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* News Grid */
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      padding: 40px;
+    }
+
+    .news-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 6px 16px var(--shadow);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .news-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 20px var(--shadow);
+    }
+
+    .news-card h3 {
+      margin-top: 0;
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+
+    .news-card p {
+      font-size: 0.95rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .news-card a {
+      text-decoration: none;
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    footer {
+      text-align: center;
+      padding: 15px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      .top-controls {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><span>🤖</span> AI & Software News</h1>
+    <div class="top-controls">
+      <div class="filter-container">
+        <form method="get" action="/">
+          <select name="filter" onchange="this.form.submit()">
+            <option value="All" {% if selected_filter == 'All' %}selected{% endif %}>All News</option>
+            <option value="AI" {% if selected_filter == 'AI' %}selected{% endif %}>AI</option>
+            <option value="Software" {% if selected_filter == 'Software' %}selected{% endif %}>Software</option>
+            <option value="Startup" {% if selected_filter == 'Startup' %}selected{% endif %}>Startups</option>
+            <option value="India" {% if selected_filter == 'India' %}selected{% endif %}>Indian Tech</option>
+          </select>
+        </form>
+      </div>
+      <button class="toggle-btn" id="themeToggle">🌙</button>
+    </div>
+  </header>
+
+  <main>
+    {% if news %}
+      <div class="news-grid">
+        {% for item in news %}
+        <div class="news-card">
+          <h3><a href="{{ item.link }}" target="_blank">{{ item.title }}</a></h3>
+          <p>{{ item.summary }}</p>
+          <p><b>Source:</b> {{ item.source }}<br><b>Published:</b> {{ item.published }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="text-align:center; padding: 50px; font-size: 1.1rem;">No news found. Try another filter or refresh later.</p>
+    {% endif %}
+  </main>
+
+  <footer>© {{ now().year if now else '2025' }} AI & Tech News Portal — Curated for Developers 🚀</footer>
+
+  <script>
+    // 🌙 Dark mode toggle logic
+    const toggleBtn = document.getElementById("themeToggle");
+    const currentTheme = localStorage.getItem("theme");
+
+    if (currentTheme === "dark") {
+      document.body.classList.add("dark");
+      toggleBtn.textContent = "☀️";
+    }
+
+    toggleBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      const theme = document.body.classList.contains("dark") ? "dark" : "light";
+      toggleBtn.textContent = theme === "dark" ? "☀️" : "🌙";
+      localStorage.setItem("theme", theme);
+    });
+  </script>
+</body>
+</html>

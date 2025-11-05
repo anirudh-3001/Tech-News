@@ -1,80 +1,78 @@
 const chat = document.getElementById("chat");
-const form = document.getElementById("chat-form");
 const msgInput = document.getElementById("msg");
 const refreshBtn = document.getElementById("refreshBtn");
 
-function addUserBubble(text){
-  const d = document.createElement("div");
-  d.className = "user-message";
-  d.innerText = text;
-  chat.appendChild(d);
+function addUserBubble(text) {
+  const div = document.createElement("div");
+  div.className = "user-message";
+  div.innerText = text;
+  chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
 
-function addBotBubble(html){
-  const d = document.createElement("div");
-  d.className = "bot-message";
-  d.innerHTML = html;
-  chat.appendChild(d);
+function addBotBubble(html) {
+  const div = document.createElement("div");
+  div.className = "bot-message";
+  div.innerHTML = html;
+  chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
 
-async function sendMessage(){
+async function sendMessage() {
   const text = msgInput.value.trim();
-  if(!text) return false;
+  if (!text) return false;
   addUserBubble(text);
   msgInput.value = "";
-  addBotBubble("⏳ Fetching news...");
-  try{
+  addBotBubble("⏳ Fetching the latest AI & tech updates...");
+
+  try {
     const res = await fetch(`/api/query?date=${encodeURIComponent(text)}&summarize=1`);
     const data = await res.json();
-    // remove last bot placeholder
-    const bots = document.querySelectorAll(".bot-message");
-    if(bots.length) bots[bots.length-1].remove();
-    if(data.error){ addBotBubble("⚠️ " + data.error); return false; }
-    if(!data.items || data.items.length === 0){
-      addBotBubble("No technical news found for that date. Try 'today' or 'yesterday'.");
+    document.querySelectorAll(".bot-message").at(-1)?.remove();
+
+    if (data.error) {
+      addBotBubble("⚠️ " + data.error);
       return false;
     }
-    // build HTML
-    let html = "<ul style='padding-left:20px'>";
-data.items.forEach(item => {
-  html += `<li style="margin-bottom:12px">
-    <div style="font-size:0.95rem; color:#333; margin-bottom:4px;">${item.summary}</div>
-    <a href="${item.link}" target="_blank" style="font-size:0.85rem; color:#0057ff;">${item.link}</a>
-  </li>`;
-});
-html += "</ul>";
+    if (!data.items || data.items.length === 0) {
+      addBotBubble("No AI or tech news found for that date. Try 'today' or 'yesterday'.");
+      return false;
+    }
 
+    let html = "";
+    data.items.forEach(item => {
+      html += `
+        <div class="news-card">
+          <h4>${item.title || "Untitled"}</h4>
+          <p>${item.summary || "No summary available."}</p>
+          <a href="${item.link}" target="_blank">Read more</a>
+        </div>
+      `;
+    });
 
     addBotBubble(html);
-  }catch(e){
-    // remove placeholder
-    const bots = document.querySelectorAll(".bot-message");
-    if(bots.length) bots[bots.length-1].remove();
-    addBotBubble("Network error. Is the server running?");
+  } catch {
+    document.querySelectorAll(".bot-message").at(-1)?.remove();
+    addBotBubble("⚠️ Network error. Is the Flask server running?");
   }
   return false;
 }
 
-refreshBtn.onclick = async ()=>{
-  addBotBubble("⏳ Refreshing news from RSS...");
-  try{
+refreshBtn.onclick = async () => {
+  addBotBubble("⏳ Refreshing latest feeds...");
+  try {
     const r = await fetch("/refresh");
     const j = await r.json();
-    const bots = document.querySelectorAll(".bot-message");
-    if(bots.length) bots[bots.length-1].remove();
-    addBotBubble("Fetched " + j.count + " articles.");
-  }catch(e){
-    const bots = document.querySelectorAll(".bot-message");
-    if(bots.length) bots[bots.length-1].remove();
-    addBotBubble("Failed to refresh. Check server.");
+    document.querySelectorAll(".bot-message").at(-1)?.remove();
+    addBotBubble("✅ Updated " + j.count + " articles successfully.");
+  } catch {
+    document.querySelectorAll(".bot-message").at(-1)?.remove();
+    addBotBubble("⚠️ Failed to refresh. Check your server.");
   }
-}
+};
 
-// allow enter to send
-msgInput.addEventListener("keydown", (e)=>{
-  if(e.key === "Enter" && !e.shiftKey){
+msgInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
   }

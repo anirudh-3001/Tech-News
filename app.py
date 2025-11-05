@@ -1,70 +1,60 @@
-from flask import Flask, request, jsonify
-from news_api_fetcher import fetch_news_api_tech
-from news_fetcher import fetch_rss_tech
-from summerizer import generate_contextual_summary
+from flask import Flask, render_template, request
+from news_fetcher import fetch_rss_tech, fetch_news_api_tech
 import pandas as pd
-import spacy
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
-nlp = spacy.load("en_core_web_sm")
 
-@app.route("/")
-def home():
-    news_api_df = fetch_news_api_tech()
+# In-memory cache
+CACHE = {"data": None, "timestamp": None}
+CACHE_DURATION = timedelta(minutes=30)  # cache time
+
+def get_cached_news():
+    global CACHE
+    now = datetime.utcnow()
+
+    # ✅ Fixed: check properly if cache is valid
+    if (
+        CACHE["data"] is not None
+        and isinstance(CACHE["data"], pd.DataFrame)
+        and not CACHE["data"].empty
+        and CACHE["timestamp"] is not None
+        and now - CACHE["timestamp"] < CACHE_DURATION
+    ):
+        print("✅ Using cached news data.")
+        return CACHE["data"]
+
+    print("🔄 Fetching new data...")
     rss_df = fetch_rss_tech()
+    api_df = fetch_news_api_tech()
 
-    combined_df = pd.concat([news_api_df, rss_df], ignore_index=True)
-    combined_df.drop_duplicates(subset="title", inplace=True)
-    combined_df = combined_df.sort_values(by="published", ascending=False)
+    combined_df = pd.concat([rss_df, api_df], ignore_index=True)
 
-    combined_df["context"] = combined_df.apply(
-        lambda row: generate_contextual_summary(row["title"], row["summary"]), axis=1
-    )
+    if not combined_df.empty:
+        combined_df.drop_duplicates(subset="title", inplace=True)
+        combined_df.sort_values(by="published", ascending=False, inplace=True)
 
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>AI & Software News</title>
-        <link rel="stylesheet" href="/static/styles.css">
-    </head>
-    <body>
-    <h2>AI & Software R&D News Portal</h2>
-    <p>Stay updated on software launches, AI research, and company tech investments.</p>
-    <hr>
-    """
+    # Save to cache
+    CACHE["data"] = combined_df
+    CACHE["timestamp"] = now
 
-    if combined_df.empty:
-        html += "<p>No relevant technical news found right now. Please check again later.</p>"
+    return combined_df
+
+@app.route('/')
+def home():
+    selected_filter = request.args.get("filter", "All")
+    combined_df = get_cached_news()
+
+    if not combined_df.empty:
+        if selected_filter != "All":
+            combined_df = combined_df[
+                combined_df["summary"].str.contains(selected_filter, case=False, na=False)
+            ]
+        news_items = combined_df.to_dict(orient="records")
     else:
-        html += f"<p><b>Total Technical Articles:</b> {len(combined_df)}</p>"
-        html += "<ul>"
-        for _, news in combined_df.iterrows():
-            html += (
-                f"<li><a href='{news['link']}' target='_blank'>{news['title']}</a> "
-                f"- <strong>{news['source']}</strong><br>"
-                f"<em>{news['context']}</em></li>"
-            )
-        html += "</ul>"
+        news_items = []
 
-    html += "</body></html>"
-    return html
+    return render_template('index.html', news=news_items, selected_filter=selected_filter)
 
-@app.route("/api/query")
-def query_news():
-    date = request.args.get("date", "today")
-    summarize = request.args.get("summarize", "0") == "1"
-
-    df = pd.concat([fetch_news_api_tech(), fetch_rss_tech()], ignore_index=True)
-    df.drop_duplicates(subset="title", inplace=True)
-
-
-    return jsonify({"items": df.to_dict(orient="records")})
-
-@app.route("/refresh")
-def refresh():
-    df = pd.concat([fetch_news_api_tech(), fetch_rss_tech()], ignore_index=True)
-    return jsonify({"count": len(df)})
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
